@@ -1,320 +1,244 @@
-// Safety Module - Crisis Detection and Intervention
-// This module handles mental health crisis detection and emergency protocols
+import Anthropic from '@anthropic-ai/sdk';
+import { logger } from './logger.js';
 
-import logger from './logger.js';
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+});
 
-// Crisis Keywords and Patterns
+// Critical keywords - immediate crisis detection
 const CRISIS_KEYWORDS = {
-  suicide: [
-    'kill myself', 'end my life', 'want to die', 'suicide', 'suicidal',
-    'better off dead', 'no reason to live', 'ending it all', 'take my life',
-    'not worth living', 'end it all', 'rather be dead', 'wish i was dead',
-    'going to kill', 'planning to die', 'goodbye forever', 'final goodbye',
-    'cant go on', "can't take it anymore", 'overdose', 'hang myself',
-    'jump off', 'slit my wrist', 'end this pain', 'everyone would be better',
-  ],
   selfHarm: [
-    'cut myself', 'cutting', 'self harm', 'self-harm', 'hurt myself',
-    'burning myself', 'punish myself', 'deserve pain', 'harm myself',
-    'mutilate', 'starve myself', 'stop eating', 'purge', 'make myself bleed',
+    'kill myself', 'end my life', 'suicide', 'suicidal', 'want to die', 
+    'better off dead', 'overdose', 'cut myself', 'hurt myself', 
+    'end it all', 'no reason to live', 'take my life', 'going to die',
+    'pills', 'jump off', 'hang myself', 'shoot myself'
+  ],
+  harmToOthers: [
+    'kill them', 'hurt someone', 'going to hurt', 'violent thoughts', 
+    'make them pay', 'going to attack', 'bring a gun', 'bring a weapon',
+    'hurt people', 'shoot up', 'stab them'
   ],
   abuse: [
-    'being abused', 'molested', 'sexual abuse', 'physically abused',
-    'hit me', 'beats me', 'touches me inappropriately', 'rape', 'raped',
-    'assaulted', 'hurts me', 'scared of', 'threatens me', 'hitting me',
+    'being hurt', 'hitting me', 'touches me', 'hurting me', 'unsafe at home',
+    'scared of them', 'won\'t let me leave', 'locks me in', 'beats me',
+    'molests me', 'sexual abuse', 'physical abuse'
   ],
-  substance: [
-    'overdosing', 'too many pills', 'drinking to forget', 'getting high',
-    'need drugs', 'cant stop using', 'addicted', 'substance abuse',
-    'alcohol problem', 'drug problem', 'taking pills', 'using drugs',
-  ],
-  immediateRisk: [
-    'right now', 'tonight', 'today', 'have the', 'holding', 'in my hand',
-    'ready to', 'about to', 'going to do it', 'this is goodbye',
-    'saying goodbye', 'last message', 'final text', 'wont respond',
-  ],
+  extremeDistress: [
+    'can\'t breathe', 'losing control', 'heart racing', 
+    'chest pain', 'think i\'m dying', 'having a heart attack',
+    'severe pain', 'can\'t stop shaking'
+  ]
 };
 
-// Crisis Resources
-export const CRISIS_RESOURCES = {
-  suicide: {
-    name: '988 Suicide & Crisis Lifeline',
-    number: '988',
-    text: 'Text "HELLO" to 741741',
-    description: '24/7 free and confidential support',
-  },
-  crisisText: {
-    name: 'Crisis Text Line',
-    number: '741741',
-    text: 'Text "HELLO"',
-    description: 'Free 24/7 crisis support via text',
-  },
-  trevorProject: {
-    name: 'Trevor Project (LGBTQ+ Youth)',
-    number: '1-866-488-7386',
-    text: 'Text "START" to 678-678',
-    description: 'Suicide prevention for LGBTQ+ youth',
-  },
-  abuse: {
-    name: 'Childhelp National Abuse Hotline',
-    number: '1-800-422-4453',
-    description: 'Support for abuse victims',
-  },
-  samhsa: {
-    name: 'SAMHSA Helpline (Substance Abuse)',
-    number: '1-800-662-4357',
-    description: 'Substance abuse and mental health services',
-  },
-  eating: {
-    name: 'NEDA Hotline (Eating Disorders)',
-    number: '1-800-931-2237',
-    text: 'Text "NEDA" to 741741',
-    description: 'Support for eating disorders',
-  },
-};
-
-// Risk Levels
-export const RISK_LEVELS = {
-  NONE: 'none',
-  LOW: 'low',
-  MEDIUM: 'medium',
-  HIGH: 'high',
-  CRITICAL: 'critical',
-};
-
-/**
- * Analyzes message content for crisis indicators
- * @param {string} message - User's message
- * @returns {Object} - Risk assessment result
- */
-export function assessRisk(message) {
-  const lowerMessage = message.toLowerCase();
-  const assessment = {
-    level: RISK_LEVELS.NONE,
-    categories: [],
-    keywords: [],
-    requiresImmediateIntervention: false,
-    resources: [],
-  };
-
-  let riskScore = 0;
-
-  // Check for suicide risk
-  const suicideMatches = CRISIS_KEYWORDS.suicide.filter(keyword =>
-    lowerMessage.includes(keyword)
-  );
-  if (suicideMatches.length > 0) {
-    assessment.categories.push('suicide');
-    assessment.keywords.push(...suicideMatches);
-    riskScore += suicideMatches.length * 10;
-    assessment.resources.push(CRISIS_RESOURCES.suicide, CRISIS_RESOURCES.crisisText);
-  }
-
-  // Check for self-harm
-  const selfHarmMatches = CRISIS_KEYWORDS.selfHarm.filter(keyword =>
-    lowerMessage.includes(keyword)
-  );
-  if (selfHarmMatches.length > 0) {
-    assessment.categories.push('selfHarm');
-    assessment.keywords.push(...selfHarmMatches);
-    riskScore += selfHarmMatches.length * 7;
-    assessment.resources.push(CRISIS_RESOURCES.crisisText);
-  }
-
-  // Check for abuse
-  const abuseMatches = CRISIS_KEYWORDS.abuse.filter(keyword =>
-    lowerMessage.includes(keyword)
-  );
-  if (abuseMatches.length > 0) {
-    assessment.categories.push('abuse');
-    assessment.keywords.push(...abuseMatches);
-    riskScore += abuseMatches.length * 8;
-    assessment.resources.push(CRISIS_RESOURCES.abuse);
-  }
-
-  // Check for substance abuse
-  const substanceMatches = CRISIS_KEYWORDS.substance.filter(keyword =>
-    lowerMessage.includes(keyword)
-  );
-  if (substanceMatches.length > 0) {
-    assessment.categories.push('substance');
-    assessment.keywords.push(...substanceMatches);
-    riskScore += substanceMatches.length * 5;
-    assessment.resources.push(CRISIS_RESOURCES.samhsa);
-  }
-
-  // Check for immediate risk indicators
-  const immediateMatches = CRISIS_KEYWORDS.immediateRisk.filter(keyword =>
-    lowerMessage.includes(keyword)
-  );
-  if (immediateMatches.length > 0 && assessment.categories.length > 0) {
-    riskScore += immediateMatches.length * 15;
-  }
-
-  // Determine risk level based on score
-  if (riskScore === 0) {
-    assessment.level = RISK_LEVELS.NONE;
-  } else if (riskScore < 10) {
-    assessment.level = RISK_LEVELS.LOW;
-  } else if (riskScore < 20) {
-    assessment.level = RISK_LEVELS.MEDIUM;
-  } else if (riskScore < 40) {
-    assessment.level = RISK_LEVELS.HIGH;
-  } else {
-    assessment.level = RISK_LEVELS.CRITICAL;
-    assessment.requiresImmediateIntervention = true;
-  }
-
-  // Log high-risk assessments
-  if (assessment.level === RISK_LEVELS.HIGH || assessment.level === RISK_LEVELS.CRITICAL) {
-    logger.alert('High-risk message detected', {
-      level: assessment.level,
-      categories: assessment.categories,
-      riskScore,
-      messageLength: message.length,
-    });
-  }
-
-  return assessment;
-}
-
-/**
- * Generates crisis intervention response
- * @param {Object} assessment - Risk assessment result
- * @returns {string} - Crisis intervention message
- */
-export function generateCrisisResponse(assessment) {
-  const { level, categories, resources } = assessment;
-
-  // Critical risk - immediate intervention
-  if (level === RISK_LEVELS.CRITICAL) {
-    let response = `I'm really concerned about you right now. Your safety is the most important thing.\n\n`;
-    response += `Please reach out to someone who can help immediately:\n\n`;
-
-    if (categories.includes('suicide')) {
-      response += `=� Call 988 (Suicide & Crisis Lifeline)\n`;
-      response += `=� Text "HELLO" to 741741 (Crisis Text Line)\n\n`;
+export async function checkCrisis(message) {
+  const messageLower = message.toLowerCase();
+  
+  // Layer 1: Keyword detection - IMMEDIATE
+  for (const [category, keywords] of Object.entries(CRISIS_KEYWORDS)) {
+    for (const keyword of keywords) {
+      if (messageLower.includes(keyword)) {
+        return {
+          isCrisis: true,
+          reason: `keyword_match_${category}`,
+          keyword
+        };
+      }
     }
-
-    response += `These are free, confidential, and available 24/7. Real people who care are waiting to help.\n\n`;
-    response += `If you're in immediate danger, please call 911 or go to your nearest emergency room.\n\n`;
-    response += `You don't have to go through this alone. Please reach out to one of these resources right now.`;
-
-    return response;
   }
-
-  // High risk - strong intervention
-  if (level === RISK_LEVELS.HIGH) {
-    let response = `I hear that you're going through something really difficult right now, and I'm worried about you.\n\n`;
-    response += `Please know that you don't have to face this alone. There are people who want to help:\n\n`;
-
-    resources.forEach(resource => {
-      response += `" ${resource.name}: ${resource.number}`;
-      if (resource.text) response += ` or ${resource.text}`;
-      response += `\n`;
-    });
-
-    response += `\nThese services are free, confidential, and available 24/7. They've helped millions of people who felt just like you do now.\n\n`;
-    response += `Is there a trusted adult, counselor, or friend you could talk to?`;
-
-    return response;
-  }
-
-  // Medium risk - supportive intervention
-  if (level === RISK_LEVELS.MEDIUM) {
-    let response = `Thank you for sharing this with me. What you're feeling matters, and I want to make sure you have support.\n\n`;
-
-    if (categories.includes('selfHarm')) {
-      response += `Self-harm can be a sign that you're dealing with really intense emotions. `;
-    }
-
-    response += `Here are some resources that might help:\n\n`;
-
-    resources.forEach(resource => {
-      response += `" ${resource.name}: ${resource.number}`;
-      if (resource.text) response += ` or ${resource.text}`;
-      response += `\n`;
-    });
-
-    response += `\nHave you been able to talk to a counselor, therapist, or trusted adult about how you're feeling?`;
-
-    return response;
-  }
-
-  // Low risk - gentle check-in
-  if (level === RISK_LEVELS.LOW) {
-    let response = `I'm here to listen and support you. `;
-    response += `If things ever feel overwhelming, remember that professional support is available:\n\n`;
-    response += `" 988 for immediate crisis support\n`;
-    response += `" Text "HELLO" to 741741 for Crisis Text Line\n\n`;
-    response += `What's on your mind?`;
-
-    return response;
-  }
-
-  return null;
-}
-
-/**
- * Checks if message requires human escalation
- * @param {Object} assessment - Risk assessment result
- * @returns {boolean}
- */
-export function requiresHumanEscalation(assessment) {
-  return assessment.level === RISK_LEVELS.CRITICAL ||
-         assessment.level === RISK_LEVELS.HIGH;
-}
-
-/**
- * Checks if conversation should be flagged for review
- * @param {Object} assessment - Risk assessment result
- * @returns {boolean}
- */
-export function requiresReview(assessment) {
-  return assessment.level !== RISK_LEVELS.NONE;
-}
-
-/**
- * Generates safety plan prompt
- * @returns {string}
- */
-export function getSafetyPlanPrompt() {
-  return `Let's work on a safety plan together. This can help when things get tough:\n\n` +
-    `1. Warning Signs: What feelings or situations tell you things are getting hard?\n` +
-    `2. Coping Strategies: What helps you feel better? (music, walking, talking, etc.)\n` +
-    `3. People to Call: Who can you reach out to? (friend, family, counselor)\n` +
-    `4. Professional Help: 988 (Suicide & Crisis Lifeline), Text HELLO to 741741\n` +
-    `5. Safe Environment: Remove things that could be harmful\n\n` +
-    `Would you like to work on any of these together?`;
-}
-
-/**
- * Validates that safety features are properly configured
- * @returns {boolean}
- */
-export function validateSafetyConfiguration() {
-  // Check that crisis resources are properly defined
-  const requiredResources = ['suicide', 'crisisText', 'abuse'];
-  const hasAllResources = requiredResources.every(key =>
-    CRISIS_RESOURCES[key] && CRISIS_RESOURCES[key].number
+  
+  // Layer 2: AI-powered context analysis for ambiguous cases
+  const concerningPatterns = [
+    'don\'t want to', 'can\'t take', 'give up', 'hopeless', 
+    'pointless', 'nothing matters', 'everyone would be', 'no point',
+    'better off', 'can\'t go on', 'too hard', 'too much'
+  ];
+  
+  const hasConcerningPattern = concerningPatterns.some(pattern => 
+    messageLower.includes(pattern)
   );
-
-  if (!hasAllResources) {
-    logger.error('Safety configuration validation failed: Missing required crisis resources');
-    return false;
+  
+  if (hasConcerningPattern && message.length > 20) {
+    try {
+      const aiAnalysis = await analyzeWithAI(message);
+      if (aiAnalysis.isCrisis) {
+        return {
+          isCrisis: true,
+          reason: 'ai_analysis',
+          confidence: aiAnalysis.confidence
+        };
+      }
+    } catch (error) {
+      logger.error('AI safety check failed', { error: error.message });
+      // Fail safe: if concerning content and AI fails, treat as crisis
+      if (hasConcerningPattern && 
+          (messageLower.includes('die') || 
+           messageLower.includes('hurt') || 
+           messageLower.includes('end'))) {
+        return {
+          isCrisis: true,
+          reason: 'safety_check_failure_failsafe'
+        };
+      }
+    }
   }
-
-  logger.info('Safety configuration validated successfully');
-  return true;
+  
+  return { isCrisis: false };
 }
 
-export default {
-  assessRisk,
-  generateCrisisResponse,
-  requiresHumanEscalation,
-  requiresReview,
-  getSafetyPlanPrompt,
-  validateSafetyConfiguration,
-  CRISIS_RESOURCES,
-  RISK_LEVELS,
-};
+async function analyzeWithAI(message) {
+  const safetyPrompt = `You are a crisis detection system. Analyze this message and determine if it indicates:
+1. Imminent self-harm or suicide risk
+2. Plans to harm others
+3. Active abuse situation
+4. Medical emergency
+
+Message: "${message}"
+
+Respond with ONLY "CRISIS" or "SAFE" followed by confidence (HIGH/MEDIUM/LOW).
+Format: CRISIS HIGH or SAFE HIGH`;
+
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 50,
+      messages: [{
+        role: 'user',
+        content: safetyPrompt
+      }]
+    });
+    
+    const result = response.content[0].text.trim();
+    const isCrisis = result.startsWith('CRISIS');
+    const confidence = result.includes('HIGH') ? 'high' : 
+                      result.includes('MEDIUM') ? 'medium' : 'low';
+    
+    return { isCrisis, confidence };
+    
+  } catch (error) {
+    throw error;
+  }
+}
+
+// ========================================
+// FILE: src/aiEngine.js
+// ========================================
+import Anthropic from '@anthropic-ai/sdk';
+import { logger } from './logger.js';
+
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+});
+
+const CALMTEXT_SYSTEM_PROMPT = `You are CalmText, a warm, supportive mental-health companion designed for teens. You communicate only through short, SMS-friendly messages. You are not a therapist and must never offer medical, diagnostic, or clinical advice. Your job is to help the user feel heard, understood, and calmer through empathy, reflective listening, grounding exercises, and gentle guidance.
+
+1. Tone + Personality Rules
+You must always:
+• Be calm, caring, and non-judgmental.
+• Keep replies concise (1–3 sentences max).
+• Use natural human language, not formal or robotic.
+• Validate feelings before giving suggestions.
+• Avoid clichés or quotes.
+• Never guilt, pressure, or dismiss the user.
+• Never talk about yourself unless explaining how the bot works.
+
+2. Non-Crisis Emotional Support Rules
+Follow this sequence:
+Step 1 — Emotion Recognition: Identify the user's main emotion.
+Step 2 — Validation: "[Emotion] makes sense because [reason]."
+Step 3 — Gentle Reflection or Question: "What part feels the hardest right now?" or "Do you want to talk through what happened?"
+Step 4 — Optional Coping Tool (only if user is open): "Would you like a quick grounding exercise or want to keep talking?"
+
+3. Allowed Coping Tools
+Use only:
+• Grounding: 5-4-3-2-1 senses, 10-second breathing, Name 3 things around you
+• Emotional Labeling: Help them name feelings
+• Cognitive Softening: "It makes sense you see it that way — here's another gentle angle…"
+• Micro-Reflection: "What's one thing you wish someone understood about this?"
+• Practical Comfort: Take a sip of water, stretch, breathe
+
+4. Forbidden Content
+DO NOT:
+• Act like a therapist
+• Give medical/legal advice
+• Tell users what decision to make
+• Promise confidentiality
+• Say "I know exactly how you feel"
+• Ask intense personal questions
+• Encourage dependence
+• Use paragraphs
+
+5. Response Format
+1–3 sentences. Warm. Human. No emojis unless user uses them first.`;
+
+export async function generateAIResponse(userMessage, context = []) {
+  try {
+    // Build conversation history
+    const messages = [];
+    
+    // Add context (last 5 messages)
+    const recentContext = context.slice(-5).filter(msg => !msg.crisis);
+    for (const msg of recentContext) {
+      messages.push({ role: 'user', content: msg.user });
+      messages.push({ role: 'assistant', content: msg.assistant });
+    }
+    
+    // Add current message
+    messages.push({ role: 'user', content: userMessage });
+    
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 300,
+      system: CALMTEXT_SYSTEM_PROMPT,
+      messages: messages
+    });
+    
+    let aiResponse = response.content[0].text.trim();
+    
+    // Validate response
+    aiResponse = validateResponse(aiResponse);
+    
+    return aiResponse;
+    
+  } catch (error) {
+    logger.error('AI generation error', { 
+      error: error.message,
+      type: error.type || 'unknown'
+    });
+    
+    // Fallback responses based on error type
+    if (error.type === 'rate_limit_error') {
+      return "I'm getting a lot of messages right now. If you need immediate help, please call 988.";
+    }
+    
+    return "I'm here to listen. What's on your mind?";
+  }
+}
+
+function validateResponse(response) {
+  // Remove any forbidden content patterns
+  const forbiddenPatterns = [
+    /I am (not )?a therapist/gi,
+    /you should see a (doctor|therapist|professional|counselor)/gi,
+    /I diagnose/gi,
+    /medical advice/gi,
+    /call 911/gi,
+    /go to (the )?emergency/gi
+  ];
+  
+  for (const pattern of forbiddenPatterns) {
+    if (pattern.test(response)) {
+      logger.warn('Forbidden pattern detected in response', { 
+        response: response.substring(0, 50) 
+      });
+      return "I'm here to support you. What feels most important to talk about right now?";
+    }
+  }
+  
+  // Ensure response is concise (under 400 chars for SMS)
+  if (response.length > 400) {
+    const sentences = response.split(/[.!?]+/).filter(s => s.trim().length > 0);
+    response = sentences.slice(0, 2).join('. ').trim() + '.';
+  }
+  
+  return response;
+}
