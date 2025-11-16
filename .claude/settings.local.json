@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat:*)",
+      "Bash(if command -v brew)",
+      "Bash(/dev/null)",
+      "Bash(then echo \"Homebrew installed\")",
+      "Bash(else echo \"Homebrew NOT installed\")",
+      "Bash(fi)",
+      "Bash(docker-compose up:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -1,0 +1,93 @@
+
+═══════════════════════════════════════════════════════════════════════
+    🚀 DEPLOY IN 3 SIMPLE STEPS - GET PERMANENT WEBHOOK URL
+═══════════════════════════════════════════════════════════════════════
+
+STEP 1: Push to GitHub (2 minutes)
+───────────────────────────────────────────────────────────────────────
+
+1. Create new repo: https://github.com/new
+   Name: mental-health-chatbot
+   ⚠️ Don't check "Initialize with README"
+
+2. Copy your GitHub URL and run:
+   
+   git remote add origin https://github.com/YOUR_USERNAME/mental-health-chatbot.git
+   git push -u origin main
+
+   ✅ Your code is now on GitHub!
+
+
+STEP 2: Deploy to Railway (2 minutes)
+───────────────────────────────────────────────────────────────────────
+
+1. Go to: https://railway.app/new
+
+2. Click: "Deploy from GitHub repo"
+
+3. Select: mental-health-chatbot
+
+4. Add databases:
+   - Click "+ New" → "Database" → "Add PostgreSQL"
+   - Click "+ New" → "Database" → "Add Redis"
+
+5. Add environment variables (click Variables tab):
+   
+   TWILIO_ACCOUNT_SID=your_twilio_account_sid_here
+   TWILIO_AUTH_TOKEN=your_twilio_auth_token_here
+   TWILIO_PHONE_NUMBER=+18668551301
+   ANTHROPIC_API_KEY=sk-ant-api03-YOUR_KEY_HERE
+   NODE_ENV=production
+   PORT=3000
+
+6. Generate Domain:
+   - Settings tab → "Generate Domain"
+   - Copy your URL: https://your-app.railway.app
+
+   ✅ Your app is deployed with permanent URL!
+
+
+STEP 3: Update Twilio (1 minute)
+───────────────────────────────────────────────────────────────────────
+
+1. Go to: https://console.twilio.com/us1/develop/phone-numbers/manage/active
+
+2. Click your phone number
+
+3. Under "Messaging" → "A MESSAGE COMES IN":
+   
+   Webhook URL: https://your-app.railway.app/webhook/sms
+   Method: POST
+
+4. Click "Save"
+
+   ✅ DONE! Your permanent webhook is live!
+
+
+TEST IT!
+───────────────────────────────────────────────────────────────────────
+
+Send a text to your Twilio number:
+- "help" → Get list of commands
+- "resources" → Get crisis hotlines
+- "breathe" → Get breathing exercise
+
+You should get a response within 5 seconds!
+
+
+MONITORING
+───────────────────────────────────────────────────────────────────────
+
+• Railway Logs: https://railway.app → Your Project → "Logs"
+• Twilio Logs: https://console.twilio.com/us1/monitor/logs/sms
+• Health Check: https://your-app.railway.app/health
+
+
+═══════════════════════════════════════════════════════════════════════
+              🎉 YOUR PERMANENT WEBHOOK IS READY! 🎉
+═══════════════════════════════════════════════════════════════════════
+
+No more ngrok! No more changing URLs! Deploy once, use forever!
+
+Questions? Check: DEPLOYMENT_GUIDE.md
+
