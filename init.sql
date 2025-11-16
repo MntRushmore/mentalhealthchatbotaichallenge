@@ -1,7 +1,3 @@
--- Mental Health Chatbot Database Schema
--- This file initializes the PostgreSQL database
-
--- Create users table
 CREATE TABLE IF NOT EXISTS users (
     phone_number VARCHAR(20) PRIMARY KEY,
     first_interaction TIMESTAMP DEFAULT NOW(),
@@ -13,7 +9,6 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
--- Create conversations table
 CREATE TABLE IF NOT EXISTS conversations (
     id SERIAL PRIMARY KEY,
     phone_number VARCHAR(20) REFERENCES users(phone_number),
@@ -26,7 +21,7 @@ CREATE TABLE IF NOT EXISTS conversations (
     metadata JSONB DEFAULT '{}'::jsonb
 );
 
--- Create crisis_events table
+
 CREATE TABLE IF NOT EXISTS crisis_events (
     id SERIAL PRIMARY KEY,
     phone_number VARCHAR(20) REFERENCES users(phone_number),
@@ -39,7 +34,6 @@ CREATE TABLE IF NOT EXISTS crisis_events (
     metadata JSONB DEFAULT '{}'::jsonb
 );
 
--- Create check_ins table
 CREATE TABLE IF NOT EXISTS check_ins (
     id SERIAL PRIMARY KEY,
     phone_number VARCHAR(20) REFERENCES users(phone_number),
@@ -50,7 +44,6 @@ CREATE TABLE IF NOT EXISTS check_ins (
     metadata JSONB DEFAULT '{}'::jsonb
 );
 
--- Create indexes for performance
 CREATE INDEX IF NOT EXISTS idx_conversations_phone ON conversations(phone_number);
 CREATE INDEX IF NOT EXISTS idx_conversations_timestamp ON conversations(timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_conversations_risk_level ON conversations(risk_level);
@@ -64,8 +57,6 @@ CREATE INDEX IF NOT EXISTS idx_check_ins_phone ON check_ins(phone_number);
 CREATE INDEX IF NOT EXISTS idx_check_ins_sent_at ON check_ins(sent_at DESC);
 CREATE INDEX IF NOT EXISTS idx_check_ins_responded ON check_ins(responded);
 
--- Insert sample data (for testing only - remove in production)
--- INSERT INTO users (phone_number, risk_level) VALUES ('+15555551234', 'none');
 
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO postgres;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO postgres;
